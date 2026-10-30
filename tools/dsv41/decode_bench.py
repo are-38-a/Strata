@@ -133,6 +133,7 @@ def main() -> int:
     ap.add_argument("--long-tokens", type=int, default=30000)
     ap.add_argument("--n", type=int, default=256)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--dump-ids", help="短い質問と長い質問のトークン列をこのフォルダに書き出して終わる (CLI の --ids @FILE 用)")
     a = ap.parse_args()
 
     cfg = json.loads(Path(a.config).read_text(encoding="utf-8"))
@@ -157,6 +158,13 @@ def main() -> int:
     tok = smoke.tokenizer(pack)
     short_ids = tok.encode(SHORT, parse_special=True)
     long_ids = long_prompt(tok, a.long_tokens, HERE.parent.parent) if a.long_tokens > 0 else None
+    if a.dump_ids:
+        d = Path(a.dump_ids)
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "short.ids").write_text(" ".join(map(str, short_ids)), encoding="utf-8")
+        if long_ids:
+            (d / "long.ids").write_text(" ".join(map(str, long_ids)), encoding="utf-8")
+        return 0
 
     out = Path(a.out)
     result = {"cmd": cmd, "env": a.env, "runs": []}
