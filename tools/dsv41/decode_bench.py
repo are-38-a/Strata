@@ -25,8 +25,12 @@ sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent.parent))
 
 GENERATED = re.compile(r"prompt (\d+) tokens = (\d+) reused \+ (\d+) read in (\d+) ms .*?(\d+) generated in (\d+) ms \(([\d.]+) tok/s\)")
-SHORT = ("<｜begin▁of▁sentence｜><｜User｜>夜の港町を舞台に、再会した幼なじみ二人の一夜を描く短編小説を"
-         "日本語で書いてください。情景と心情を細かく描写してください。<｜Assistant｜></think>")
+# 短い質問は話題を変えて 3 つ (同じ質問を繰り返すと、その答えの experts が VRAM に集まって実際より速く出る)
+SHORTS = [f"<｜begin▁of▁sentence｜><｜User｜>{q}<｜Assistant｜></think>" for q in (
+    "夜の港町を舞台に、再会した幼なじみ二人の一夜を描く短編小説を日本語で書いてください。情景と心情を細かく描写してください。",
+    "Write a Python function that parses an HTTP/1.1 request from raw bytes, with type hints and unit tests using pytest.",
+    "光合成の明反応と暗反応の仕組みを、高校生にも分かるように順を追って説明してください。",
+)]
 
 
 def engine_args(cfg: dict) -> list[str]:
@@ -156,12 +160,13 @@ def main() -> int:
     import smoke
     pack = Path(args[args.index("--pack") + 1])
     tok = smoke.tokenizer(pack)
-    short_ids = tok.encode(SHORT, parse_special=True)
+    short_ids = [tok.encode(s, parse_special=True) for s in SHORTS]
     long_ids = long_prompt(tok, a.long_tokens, HERE.parent.parent) if a.long_tokens > 0 else None
     if a.dump_ids:
         d = Path(a.dump_ids)
         d.mkdir(parents=True, exist_ok=True)
-        (d / "short.ids").write_text(" ".join(map(str, short_ids)), encoding="utf-8")
+        for i, ids in enumerate(short_ids):
+            (d / f"short{i + 1}.ids").write_text(" ".join(map(str, ids)), encoding="utf-8")
         if long_ids:
             (d / "long.ids").write_text(" ".join(map(str, long_ids)), encoding="utf-8")
         return 0
@@ -175,7 +180,7 @@ def main() -> int:
             raise RuntimeError("the engine did not become ready")
         result["load_s"] = round(time.monotonic() - t0, 1)
         for i in range(a.short_runs):
-            r = eng.gen(short_ids, a.n, timeout=600)
+            r = eng.gen(short_ids[i % len(short_ids)], a.n, timeout=600)
             r["kind"] = "short"
             result["runs"].append(r)
             print(f"short {i + 1}: {r.get('tok_s')} tok/s ({len(r['tokens'])} tokens)", flush=True)
