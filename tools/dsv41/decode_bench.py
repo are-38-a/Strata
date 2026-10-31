@@ -178,8 +178,9 @@ def main() -> int:
     t0 = time.monotonic()
     eng = Engine(cmd, env, cfg.get("cwd"), out.with_suffix(".log"))
     try:
-        if not eng.ready.wait(timeout=1800):
-            raise RuntimeError("the engine did not become ready")
+        while not eng.ready.wait(timeout=2):
+            if eng.proc.poll() is not None or time.monotonic() - t0 > 1800:
+                raise RuntimeError("the engine did not become ready")
         result["load_s"] = round(time.monotonic() - t0, 1)
         for i in range(a.short_runs):
             r = eng.gen(short_ids[i % len(short_ids)], a.n, timeout=600)
