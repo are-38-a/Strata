@@ -137,6 +137,7 @@ def main() -> int:
     ap.add_argument("--long-tokens", type=int, default=30000)
     ap.add_argument("--n", type=int, default=256)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--tok-pack", help="トークナイザーを読むパック (既定: --pack の値。--glm-pack のエンジン用)")
     ap.add_argument("--dump-ids", help="短い質問と長い質問のトークン列をこのフォルダに書き出して終わる (CLI の --ids @FILE 用)")
     a = ap.parse_args()
 
@@ -159,7 +160,7 @@ def main() -> int:
 
     import smoke
     full = [*args, *extra]
-    pack = Path(full[full.index("--pack") + 1])
+    pack = Path(a.tok_pack or full[full.index("--pack") + 1])
     tok = smoke.tokenizer(pack)
     short_ids = [tok.encode(s, parse_special=True) for s in SHORTS]
     long_ids = long_prompt(tok, a.long_tokens, HERE.parent.parent) if a.long_tokens > 0 else None
