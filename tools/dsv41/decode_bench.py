@@ -158,7 +158,8 @@ def main() -> int:
         env[k] = v
 
     import smoke
-    pack = Path(args[args.index("--pack") + 1])
+    full = [*args, *extra]
+    pack = Path(full[full.index("--pack") + 1])
     tok = smoke.tokenizer(pack)
     short_ids = [tok.encode(s, parse_special=True) for s in SHORTS]
     long_ids = long_prompt(tok, a.long_tokens, HERE.parent.parent) if a.long_tokens > 0 else None
